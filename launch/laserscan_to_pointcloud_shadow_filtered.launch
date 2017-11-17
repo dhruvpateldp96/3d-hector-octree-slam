@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<launch>
+  
+  <!--
+    Convert laser scan to 3D point cloud into fixed frame not rotating along with sensor.
+    Also performs scan shadow point filtering
+  -->
+  <node pkg="hector_laserscan_to_pointcloud" type="laserscan_to_pointcloud_node" name="scan_to_ptcld" respawn="true">
+    <param name="min_range" value="0.05" />
+    <param name="use_high_fidelity_projection" value="true" />
+    <param name="target_frame" value="pre_spindle" />
+    <rosparam command="load" file="$(find hector_laserscan_to_pointcloud)/config/default_scan_shadow_filter.yaml" />
+  </node>
+
+</launch>

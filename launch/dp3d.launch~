@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+
+<launch>
+
+	<!-- vim: set ft=xml noet : -->
+	<!-- example launch script for PX4 based FCU's -->
+
+	<arg name="fcu_url" default="/dev/ttyACM0:57600" />
+	<arg name="gcs_url" default="" />
+	<arg name="tgt_system" default="1" />
+	<arg name="tgt_component" default="1" />
+	<arg name="log_output" default="screen" />
+
+	<include file="$(find mavros)/launch/node.launch">
+		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+		<arg name="fcu_url" value="$(arg fcu_url)" />
+		<arg name="gcs_url" value="$(arg gcs_url)" />
+		<arg name="tgt_system" value="$(arg tgt_system)" />
+		<arg name="tgt_component" value="$(arg tgt_component)" />
+		<arg name="log_output" value="$(arg log_output)" />
+	</include>
+
+   
+
+
+
+  <node pkg="hector_imu_attitude_to_tf" type="imu_attitude_to_tf_node" name="imu_attitude_to_tf_node" output="screen">
+    <remap from="imu_topic" to="/mavros/imu/data" />
+    <param name="base_stabilized_frame" type="string" value="base_frame" />
+    <param name="base_frame" type="string" value="base_link" />
+  </node>
+
+
+
+	
+	<arg name="tf_map_scanmatch_transform_frame_name" default="scanmatcher_frame"/>
+	<arg name="base_frame" default="base_footprint"/>
+	<arg name="odom_frame" default="nav"/>
+	<arg name="pub_map_odom_transform" default="false"/>
+	<arg name="scan_subscriber_queue_size" default="5"/>
+	<arg name="scan_topic" default="scan"/>
+	<arg name="map_size" default="2048"/>
+
+	
+
+	<include file="$(find rplidar_ros)/launch/rplidar.launch" />
+	
+	<node pkg="hector_mapping" type="hector_mapping" name="hector_mapping" output="screen">
+	
+		<!-- Frame names -->
+            <param name="map_frame" value="map" />
+	    <param name="base_frame" value="base_frame" />
+	    <param name="odom_frame" value="base_frame" />
+	    
+	    <!-- Tf use -->
+	    <param name="use_tf_scan_transformation" value="true"/>
+	    <param name="use_tf_pose_start_estimate" value="false"/>
+	    <param name="pub_map_odom_transform" value="false"/>
+	    
+	    <!-- Map size / start point -->
+	    <param name="map_resolution" value="0.050"/>
+	    <param name="map_size" value="$(arg map_size)"/>
+	    <param name="map_start_x" value="0.5"/>
+	    <param name="map_start_y" value="0.5" />
+	    <param name="map_multi_res_levels" value="2" />
+	    
+	    <!-- Map update parameters -->
+	    <param name="update_factor_free" value="0.4"/>
+	    <param name="update_factor_occupied" value="0.9" />    
+	    <param name="map_update_distance_thresh" value="0.4"/>
+	    <param name="map_update_angle_thresh" value="0.06" />
+	    <param name="laser_z_min_value" value = "-2.5" />
+	    <param name="laser_z_max_value" value = "3.5" />
+	    
+	    <!-- Advertising config --> 
+	    <param name="advertise_map_service" value="true"/>
+	    
+	    <param name="scan_subscriber_queue_size" value="$(arg scan_subscriber_queue_size)"/>
+	    <param name="scan_topic" value="$(arg scan_topic)"/>
+	    
+	    <!-- Debug parameters -->
+	    <!--
+	      <param name="output_timing" value="false"/>
+	      <param name="pub_drawings" value="true"/>
+	      <param name="pub_debug_output" value="true"/>
+	    -->
+	    <param name="tf_map_scanmatch_transform_frame_name" value="$(arg tf_map_scanmatch_transform_frame_name)" />
+	</node>
+	
+
+
+	<node pkg="hector_laserscan_to_pointcloud" type="laserscan_to_pointcloud_node" name="scan_to_ptcld" respawn="true">
+    <param name="min_range" value="0.05" />
+    <param name="use_high_fidelity_projection" value="false" />
+    <param name="target_frame" value="pre_spindle" />
+    <rosparam command="load" file="$(find hector_laserscan_to_pointcloud)/config/default_scan_shadow_filter.yaml" />
+  </node>
+
+	
+
+	
+	
+
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server">
+		<param name="resolution" value="0.05" />
+		
+		<!-- fixed map frame (set to 'map' if SLAM or localization running!) -->
+		<param name="frame_id" type="string" value="map" />
+		
+		<!-- maximum range to integrate (speedup!) -->
+		<param name="sensor_model/max_range" value="5.0" />
+		
+		<!-- data source to integrate (PointCloud2) -->
+		<remap from="cloud_in" to="scan_cloud" />
+	
+	</node>
+
+	<param name="hector_mapping/pub_map_odom_transform" value="false"/>
+<include file="$(find hector_geotiff)/launch/geotiff_mapper.launch" />
+	
+
+
+	    
+	<!-- <node pkg="tf" type="static_transform_publisher" name="map_nav_broadcaster" args="0 0 0 0 0 0 map base_stabilized 40"/>-->
+	
+	<!-- this publishes the transform between the base and laser -->
+
+	<node pkg="tf" type="static_transform_publisher" name="base_laser_broadcaster" args="0.0 0.0 0.0 180.0 0.0 0.0 /base_link /laser 40"/>-->
+
+
+	<node pkg="tf" type="static_transform_publisher" name="base_tatti_broadcaster" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /odom 40"/>-->
+
+
+<node pkg="tf" type="static_transform_publisher" name="base_px4flow_broadcaster" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /px4flow 40"/>
+
+
+
+<arg name="no_static_map" default="true"/>
+
+  <!--<arg name="base_global_planner" default="navfn/NavfnROS"/>
+  <arg name="base_local_planner" default="dwa_local_planner/DWAPlannerROS"/>-->
+  <!-- <arg name="base_local_planner" default="base_local_planner/TrajectoryPlannerROS"/> -->
+
+  <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+
+<remap from="cmd_vel" to="/mavros/setpoint_velocity/cmd_vel" /> 
+
+   <!-- <param name="base_global_planner" value="$(arg base_global_planner)"/>
+    <param name="base_local_planner" value="$(arg base_local_planner)"/>  -->
+    <rosparam file="$(find husky_navigation)/config/planner.yaml" command="load"/>
+
+    <!-- observation sources located in costmap_common.yaml -->
+    <rosparam file="$(find husky_navigation)/config/costmap_common.yaml" command="load" ns="global_costmap" />
+    <rosparam file="$(find husky_navigation)/config/costmap_common.yaml" command="load" ns="local_costmap" />
+
+    <!-- local costmap, needs size -->
+    <rosparam file="$(find husky_navigation)/config/costmap_local.yaml" command="load" ns="local_costmap" />
+    <param name="local_costmap/width" value="10.0"/>
+    <param name="local_costmap/height" value="10.0"/>
+
+    <!-- static global costmap, static map provides size -->
+    <rosparam file="$(find husky_navigation)/config/costmap_global_static.yaml" command="load" ns="global_costmap" unless="$(arg no_static_map)"/>
+    
+    <!-- global costmap with laser, for odom_navigation_demo -->
+    <rosparam file="$(find husky_navigation)/config/costmap_global_laser.yaml" command="load" ns="global_costmap" if="$(arg no_static_map)"/>
+    <param name="global_costmap/width" value="100.0" if="$(arg no_static_map)"/>
+    <param name="global_costmap/height" value="100.0" if="$(arg no_static_map)"/>
+  </node>
+
+<!--
+<node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+  <param name="output_frame" value="odom_combined"/>
+  <param name="base_footprint_frame" value="base_footprint"/>
+  <param name="freq" value="30.0"/>
+  <param name="sensor_timeout" value="1.0"/>  
+  <param name="odom_used" value="true"/>
+  <param name="imu_used" value="true"/>
+<remap from="imu_data" to="/mavros/imu/data" /> 
+<remap from="odom" to="/mavros/global_position/local" /> 
+
+  <param name="vo_used" value="false"/>
+
+</node>
+-->
+
+
+
+</launch>
+
+
